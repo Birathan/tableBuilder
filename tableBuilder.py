@@ -1,47 +1,63 @@
+import os
+
+
 class Table():
     ''' A class to represent a Table '''
 
-    def __init__(self, title = "", columnNames = [], listOfEntries = []):
-        '''(Table, str, list of lists) -> NoneType
+    def __init__(self, title, columnNames, listOfEntries=[]):
+        '''(Table, str, str, list of str) -> NoneType
         This function builds a table with the given title, column names, and
         rows (list of entries).
         REQ: title is a string
-        REQ: columnNames is the ordered column names of the table
+        REQ: columnNames is a string with the ordered column names of the
+             table, seperated by ','.
         REQ: listOFEntries is the list of rows of the table, where each row is
-             a list of str, that is ordered with respect to the column names.
+             a string seperated with commas (ordered with respect to
+             the column names)
         '''
+        # columnNames can be input either as [list of str] or [str seperated
+        # by ',']
+        columnNames = columnNames.split(',')
+        clean_list(columnNames)
+
+        # Setup Table variables
         self.title = title
         self.columnNames = columnNames
         self.listOfEntries = listOfEntries
+        self.filename = title + ' Table.txt'
 
-    def get_column(self, columnName):
-        '''(Chart, str) -> list of str
-        This function returns the column in the table that corresponds to the
-        given columnName.
-        REQ: columnName must belong in the columnNames of the table
+        # Give option to Load or Overwrite existing Table file
+        if(os.path.isfile(self.filename)):
+            response = input("Press 'o' to Overwrite already existing table,"
+                             "or 'l' to Load the existing table. O/L : ")
+            if(response == 'o'):
+                self.save_changes()
+            else:
+                self.read_table()
+        else:
+            self.save_changes()
+
+    # ********************** NEW FUNCTION FOR SAVING **************************
+    def save_changes(self):
+        '''(Table) -> NoneType
+        This function updates the Table file to save the changes made to the
+        Table.
         '''
-        columnIndex = (self.columnNames).index(columnName)
-        column = []
-        for entry in self.listOfEntries:
-            column.append(entry[columnIndex])
-        return column
+        # 1. EMPTY FILE
+        file = open(self.filename, 'w')
+        file.close()
 
-    def add_entry(self, entry):
-        ''' (Table, list of str) -> NoneType
-        This function will add a row to the table that represents the given
-        entry
-        REQ: the entry's ordered elements must correspond to the ordered
-             column names of the Table
-        '''
-        (self.listOfEntries).append(entry)
+        # 2. REWRITE FILE
+        add_line(self.filename, self.title, 0)
+        add_line(self.filename, list_to_str(self.columnNames), 1)
+        for i in range(0, len(self.listOfEntries)):
+            entry = list_to_str(self.listOfEntries[i])
+            add_line(self.filename, '-' + entry, i+2)
 
-    def build_table(self, filename):
-        '''(Table, str) -> NoneType
+    def read_table(self):
+        '''(Table) -> NoneType
         This function helps build a table easier using a text file that is in
-        the format indicated below
-
-        REQ: the filename must be the name of a file in the same folder as this
-             .py file
+        the format indicated below and named [tableTitle + ' Table.txt']
         '''
         # ============ File Format ============
         # | People                            | <= Table Name
@@ -50,40 +66,36 @@ class Table():
         # | -20, Alexander, Green             | <= entry 2 (ordered input)
         # | -30, Cindy, Orange                | <= entry 3 (ordered input)
         # =====================================
-        file = open(filename)
+        file = open(self.filename)
 
-        entryID = 0
         for line in file:
             line = line.strip()
             if line[0] != "-":
-                if line.find(',') != -1:
-                    self.columnNames = ['ID'] + line.split(', ')
-                else:
+                if line.find(',') == -1:
                     self.title = line
+                else:
+                    self.columnNames = line.split(',')
+                    clean_list(self.columnNames)
             else:
-                entry = [str(entryID)] + line[1:].split(", ")
-                self.add_entry(entry)
-                entryID += 1
+                self.add_entry(line[1:])
         file.close()
 
-    def add_column(self, columnName, column):
-        '''(Table, name, list of str) -> NoneType
-        This function adds a column to the Table with the given columnName and
-        column.
-        REQ: the column must be ordered correspondingly to the entries
+    def add_entry(self, entry):
+        ''' (Table, str) -> NoneType
+        This function will add a row to the table that represents the given
+        entry
+        REQ: the entry's ordered elements (seperated by ',') must correspond
+             to the ordered column names of the Table
         '''
-        (self.columnNames).append(columnName)
+        # Get entry as list of elements
+        entry = entry.split(',')
+        clean_list(entry)
 
-        i = 0
-        for entry in self.listOfEntries:
-            entry.append(column[i])
-            i += 1
+        # Add entries to the list of entries
+        (self.listOfEntries).append(entry)
 
-    def edit_element(self, entryID, columnName, edit):
-        '''(Table, int, str, str) -> NoneType
-        '''
-        columnNum = (self.columnNames).index(columnName)
-        (self.listOfEntries[entryID])[columnNum] = edit
+        # Save changes to a file
+        self.save_changes()
 
     def print_table(self):
         '''(Table) -> NoneType
@@ -107,9 +119,10 @@ class Table():
         # VARIABLE SETUP
         COLUMN_WIDTHS = []
         SPACE_COUNTS = []
-        NUMBER_OF_COLUMNS = len(self.listOfEntries[0])
+        NUMBER_OF_COLUMNS = len(self.columnNames)
         CHART_WIDTH = 1
 
+        # Starting values for format
         for i in range(0, NUMBER_OF_COLUMNS):
             columnNameLength = len(self.columnNames[i])
             COLUMN_WIDTHS.append(columnNameLength)
@@ -132,7 +145,7 @@ class Table():
         # 1. PRINT TOP PART OF TABLE
         print("-"*CHART_WIDTH)
         spaceCount = CHART_WIDTH-len(self.title)-4
-        print("| " + self.title + " "*(spaceCount) + " |" )
+        print("| " + self.title + " "*(spaceCount) + " |")
         print("-"*CHART_WIDTH)
 
         # ** TEMPORARY ENTRY FOR SIMPLICITY **
@@ -153,7 +166,8 @@ class Table():
                 output += entry[i] + " "*SPACE_COUNTS[i] + " | "
             print(output)
 
-            # print divider if this entry is the temporary column name entry
+            # print divider if this entry is the temporary entry of column
+            # ames
             if entry == self.columnNames:
                 print("-"*CHART_WIDTH)
 
@@ -162,3 +176,48 @@ class Table():
 
         # ** REMOVING TEMPORARY ENTRY **
         self.listOfEntries = self.listOfEntries[1:]
+
+
+# ********************** NEW FUNCTIONS FOR SAVING TO FILES ********************
+
+# ======================== 1. FILE EDITING FUNCTIONS ==========================
+def add_line(filename, text, lineIndex):
+    '''(str, str, int) -> NoneType
+    This function takes a filename, text and lineIndex, and adds the text on a
+    new line at lineIndex (where the first line has index 0).
+    REQ: the filename must be the name of a file in the same folder as this
+         .py file
+    '''
+    file = open(filename, 'r')
+
+    # Get all lines of file as a list and add line to list at given index
+    lines = file.readlines()
+    lines = lines[:lineIndex] + [text+'\n'] + lines[lineIndex:]
+    file.close()
+
+    # Rewrite the file with updated set of lines
+    file = open(filename, 'w')
+    file.writelines(lines)
+    file.close()
+
+
+# ================= 2. STRING REPRESENTATION HELPER FUNCTIONS =================
+def list_to_str(lis):
+    '''(list of str) -> str
+    This function returns the string representation of the list, with elements
+    of list seperated by ','
+    '''
+    text = ''
+    for element in lis:
+        text += (element+', ')
+    return text[:-2]
+
+
+def clean_list(lis):
+    '''(list of str) -> str
+    This function formats the list so that each str is formatted of its leading
+    and trailing spaces
+    '''
+    for i in range(0, len(lis)):
+        if type(lis[i]) == str:
+            lis[i] = lis[i].strip()
