@@ -17,7 +17,7 @@ class Table():
         '''
         # columnNames can be input either as [list of str] or [str seperated
         # by ',']
-        columnNames = columnNames.split(',')
+        columnNames = ['ID'] + columnNames.split(',')
         clean_list(columnNames)
 
         # Setup Table variables
@@ -25,6 +25,7 @@ class Table():
         self.columnNames = columnNames
         self.listOfEntries = listOfEntries
         self.filename = title + ' Table.txt'
+        self.nextEntryID = 0
 
         # Give option to Load or Overwrite existing Table file
         if(os.path.isfile(self.filename)):
@@ -51,7 +52,7 @@ class Table():
         add_line(self.filename, self.title, 0)
         add_line(self.filename, list_to_str(self.columnNames), 1)
         for i in range(0, len(self.listOfEntries)):
-            entry = list_to_str(self.listOfEntries[i])
+            entry = list_to_str(self.listOfEntries[i][1:])
             add_line(self.filename, '-' + entry, i+2)
 
     def read_table(self):
@@ -88,8 +89,9 @@ class Table():
              to the ordered column names of the Table
         '''
         # Get entry as list of elements
-        entry = entry.split(',')
+        entry = [str(self.nextEntryID)] + entry.split(',')
         clean_list(entry)
+        self.nextEntryID += 1
 
         # Add entries to the list of entries
         (self.listOfEntries).append(entry)
@@ -100,7 +102,6 @@ class Table():
     def print_table(self):
         '''(Table) -> NoneType
         This function prints a string representation of the Table as follows:
-
                    ---------------------------------------------------
                    | Table name                                      |
                    ---------------------------------------------------
