@@ -1,208 +1,166 @@
+from tableBuilder import *
 import os
 
+def tab1():
+    i = ""
 
-class Table():
-    ''' A class to represent a Table '''
+    KEYWORDS = ["select", "from", "where"]
+    try:
+        while i != "exit":
+            i = input("tableBuilder> ")
+            i.strip()
+            elements = i.split(" ")
+            for i in range(0, len(elements)):
+                if elements[i] == "select":
+                    colnames = elements[i+1].split(',')
+                elif elements[i] == "from":
+                    tableNames = elements[i+1].split(',')
+                    for i in range(0, len(tableNames)):
+                        tableNames[i] = read_table(tableNames[i] + ' Table.txt')
+                    while len(tableNames) > 1:
+                        tableNames = [cross_product(tableNames[0],tableNames[1])] + tableNames[2:]
+            tableNames[0].print_table()
+    except:
+        print('Syntax Error')
 
-    def __init__(self, title, columnNames, listOfEntries=[]):
-        '''(Table, str, str, list of str) -> NoneType
-        This function builds a table with the given title, column names, and
-        rows (list of entries).
-        REQ: title is a string
-        REQ: columnNames is a string with the ordered column names of the
-             table, seperated by ','.
-        REQ: listOFEntries is the list of rows of the table, where each row is
-             a string seperated with commas (ordered with respect to
-             the column names)
-        '''
-        # columnNames can be input either as [list of str] or [str seperated
-        # by ',']
-        columnNames = ['ID'] + columnNames.split(',')
-        clean_list(columnNames)
+def execute_query(query):
+    KEYWORDS = ["select", "from", "where"]
+    query = delete_spaces(query)
+    elements = split_on2(query, KEYWORDS)
 
-        # Setup Table variables
-        self.title = title
-        self.columnNames = columnNames
-        self.listOfEntries = listOfEntries
-        self.filename = title + ' Table.txt'
-        self.nextEntryID = 0
+    for i in range(0, len(elements)):
+        if elements[i] == 'from':
+            tableNames = elements[i+1].split(',')
+            for a in range(0, len(tableNames)):
+                tableNames[a] = read_table(tableNames[a] + ' Table.txt')
+            while len(tableNames) > 1:
+                tableNames = [cross_product(tableNames[0],tableNames[1])] + tableNames[2:]
+            elements[i+1] = tableNames[0]
+            new_table =tableNames[0]
 
-        # Give option to Load or Overwrite existing Table file
-        if(os.path.isfile(self.filename)):
-            response = input("Press 'o' to Overwrite already existing table,"
-                             "or 'l' to Load the existing table. O/L : ")
-            if(response == 'o'):
-                self.save_changes()
-            else:
-                self.read_table()
-        else:
-            self.save_changes()
+    for i in range(0, len(elements)):
+        if elements[i] == 'select':
+            colnames = elements[i+1]
+            table = elements[i+3]
+            if colnames == '*':
+                colnames = list_to_str(table.columnNames)
+            new_table = projection(table, colnames)
 
-    # ********************** NEW FUNCTION FOR SAVING **************************
-    def save_changes(self):
-        '''(Table) -> NoneType
-        This function updates the Table file to save the changes made to the
-        Table.
-        '''
-        # 1. EMPTY FILE
-        file = open(self.filename, 'w')
-        file.close()
-
-        # 2. REWRITE FILE
-        add_line(self.filename, self.title, 0)
-        add_line(self.filename, list_to_str(self.columnNames), 1)
-        for i in range(0, len(self.listOfEntries)):
-            entry = list_to_str(self.listOfEntries[i][1:])
-            add_line(self.filename, '-' + entry, i+2)
-
-    def read_table(self):
-        '''(Table) -> NoneType
-        This function helps build a table easier using a text file that is in
-        the format indicated below and named [tableTitle + ' Table.txt']
-        '''
-        # ============ File Format ============
-        # | People                            | <= Table Name
-        # | Age, Name, Favourite Color        | <= Ordered Column Names
-        # | -15, Bob, Red                     | <= entry 1 (ordered input)
-        # | -20, Alexander, Green             | <= entry 2 (ordered input)
-        # | -30, Cindy, Orange                | <= entry 3 (ordered input)
-        # =====================================
-        file = open(self.filename)
-
-        for line in file:
-            line = line.strip()
-            if line[0] != "-":
-                if line.find(',') == -1:
-                    self.title = line
-                else:
-                    self.columnNames = line.split(',')
-                    clean_list(self.columnNames)
-            else:
-                self.add_entry(line[1:])
-        file.close()
-
-    def add_entry(self, entry):
-        ''' (Table, str) -> NoneType
-        This function will add a row to the table that represents the given
-        entry
-        REQ: the entry's ordered elements (seperated by ',') must correspond
-             to the ordered column names of the Table
-        '''
-        # Get entry as list of elements
-        entry = [str(self.nextEntryID)] + entry.split(',')
-        clean_list(entry)
-        self.nextEntryID += 1
-
-        # Add entries to the list of entries
-        (self.listOfEntries).append(entry)
-
-        # Save changes to a file
-        self.save_changes()
-
-    def print_table(self):
-        '''(Table) -> NoneType
-        This function prints a string representation of the Table as follows:
-                   ---------------------------------------------------
-                   | Table name                                      |
-                   ---------------------------------------------------
-                   | ID  | column name 1 |    ...    | column name m |
-                   ---------------------------------------------------
-        entry 1 -> | 0   |               |    ...    |               |
-        entry 2 -> | 1   |               |    ...    |               |
-        entry 3 -> | 2   |               |    ...    |               |
-        entry 4 -> | 3   |               |    ...    |               |
-            |      |     |       |       |    ...    |       |       |
-            |      |     |       |       |    ...    |       |       |
-            V      |     |       V       |    ...    |       V       |
-        entry n -> | n-1 |               |    ...    |               |
-                   ---------------------------------------------------
-        '''
-        # VARIABLE SETUP
-        COLUMN_WIDTHS = []
-        SPACE_COUNTS = []
-        NUMBER_OF_COLUMNS = len(self.columnNames)
-        CHART_WIDTH = 1
-
-        # Starting values for format
-        for i in range(0, NUMBER_OF_COLUMNS):
-            columnNameLength = len(self.columnNames[i])
-            COLUMN_WIDTHS.append(columnNameLength)
-            SPACE_COUNTS.append(0)
-
-        # GET FORMATTING INFORMATION
-        for entry in self.listOfEntries:
-            for i in range(0, len(entry)):
-                # an element is an attribute/element of the entry/row
-                # width is the full char length of column that does not include
-                # the seperator " | "
-                element_width = len(entry[i])
-                if element_width > COLUMN_WIDTHS[i]:
-                    COLUMN_WIDTHS[i] = element_width
-
-        # Get width of Chart
-        for i in range(0, NUMBER_OF_COLUMNS):
-            CHART_WIDTH += COLUMN_WIDTHS[i] + 3
-
-        # 1. PRINT TOP PART OF TABLE
-        print("-"*CHART_WIDTH)
-        spaceCount = CHART_WIDTH-len(self.title)-4
-        print("| " + self.title + " "*(spaceCount) + " |")
-        print("-"*CHART_WIDTH)
-
-        # ** TEMPORARY ENTRY FOR SIMPLICITY **
-        # add column names as a temporary entry
-        self.listOfEntries = [self.columnNames] + self.listOfEntries
-
-        # 2. PRINT ENTRY BY ENTRY
-        for entry in self.listOfEntries:
-
-            # 2A. GET SPACE COUNTS BEFORE EACH SEPERATOR " | "
-            for i in range(0, NUMBER_OF_COLUMNS):
-                entryElement = entry[i]
-                SPACE_COUNTS[i] = COLUMN_WIDTHS[i] - len(entryElement)
-
-            # 2B. PRINT ENTRY FORMATTED WITH SEPERATORS " | "
-            output = "| "
-            for i in range(0, NUMBER_OF_COLUMNS):
-                output += entry[i] + " "*SPACE_COUNTS[i] + " | "
-            print(output)
-
-            # print divider if this entry is the temporary entry of column
-            # ames
-            if entry == self.columnNames:
-                print("-"*CHART_WIDTH)
-
-        # 3. PRINT BOTTOM OF TABLE
-        print("-"*CHART_WIDTH)
-
-        # ** REMOVING TEMPORARY ENTRY **
-        self.listOfEntries = self.listOfEntries[1:]
+    for i in range(0, len(elements)):
+        if type(elements) == str and elements[i].count('(') != 0:
+            elements[i] = execute_query(elements)
 
 
-# ********************** NEW FUNCTIONS FOR SAVING TO FILES ********************
+    new_table.print_table()
 
-# ======================== 1. FILE EDITING FUNCTIONS ==========================
-def add_line(filename, text, lineIndex):
-    '''(str, str, int) -> NoneType
-    This function takes a filename, text and lineIndex, and adds the text on a
-    new line at lineIndex (where the first line has index 0).
-    REQ: the filename must be the name of a file in the same folder as this
-         .py file
+def execute_query2(query):
+    KEYWORDS = ["select", "from", "where"]
+    query = delete_spaces(query)
+    elements = split_on2(query, KEYWORDS)
+
+    # BASIC QUERIES [where ( , , ) is a list, and ( ... ) is a potential sub-query]
+    # (...) UNION (...)
+    # (...) EXCEPT (...)
+    # (...) INTERSECT (...)
+    # SELECT ( , , ) FROM (...)
+    # SELECT ( , , ) FROM (...) WHERE ( , , )
+    #
+
+    # if there is a select keyword there must be a from
+    if len(elements) == 1:
+        elements[0].print_table()
+    else:
+        for i in range(0, len(elements)):
+            if elements[i].count('(') != 0:
+                elements[i] = execute_query2(elements[i])
+
+        if elements[0] == 'select':
+            colNames = elements[1]
+            tableNames = elements[3].split(',')
+            for a in range(0, len(tableNames)):
+                tableNames[a] = read_table(tableNames[a] + ' Table.txt')
+            while len(tableNames) > 1:
+                tableNames = [cross_product(tableNames[0],tableNames[1])] + tableNames[2:]
+            newTable = tableNames[0]
+
+            if elements[5] == 'where':
+                #apply conditions
+                a= 1
+
+            projection(newTable, colnames)
+
+
+
+def clean_list(lis):
+    '''(list of str) -> str
+    This function formats the list so that each str is formatted of its leading
+    and trailing spaces
     '''
-    file = open(filename, 'r')
+    for i in range(0, len(lis)):
+        if type(lis[i]) == str:
+            lis[i] = lis[i].strip()
 
-    # Get all lines of file as a list and add line to list at given index
-    lines = file.readlines()
-    lines = lines[:lineIndex] + [text+'\n'] + lines[lineIndex:]
-    file.close()
-
-    # Rewrite the file with updated set of lines
-    file = open(filename, 'w')
-    file.writelines(lines)
-    file.close()
+def delete_spaces(string):
+    new_string = ''
+    for char in string:
+        if char != ' ':
+            new_string += char
+    return new_string
 
 
-# ================= 2. STRING REPRESENTATION HELPER FUNCTIONS =================
+# ======================== 3. TABLE TO TABLE OPERATION ========================
+def cross_product(table1, table2):
+    entries1 = table1.listOfEntries[:]
+    entries2 = table2.listOfEntries[:]
+    cols1 = table1.columnNames[:]
+    cols2 = table2.columnNames[:]
+
+    for i in range(0, len(cols1)):
+        if cols2.count(cols1[i]) != 0:
+            index = cols2.index(cols1[i])
+            cols2[index] = table2.title+'.'+cols1[i]
+            cols1[i] = table1.title+'.'+cols1[i]
+
+    entries3 = []
+
+    for entry1 in entries1:
+        for entry2 in entries2:
+            entries3.append(entry1 + entry2)
+
+    cols1.extend(cols2)
+
+    table3 = Table("temp", cols1, entries3)
+    return table3
+
+def projection(table, colnames):
+    listOfEntries =[]
+    collis = []
+
+    colnames = colnames.split(',')
+    clean_list(colnames)
+
+    for colname in colnames:
+        collis.append(table.get_column(colname))
+
+    for i in range(0, len(table.listOfEntries)):
+        entry = []
+        for col in collis:
+            entry.append(col[i])
+        listOfEntries.append(entry)
+    tableOutput = Table("temp", colnames, listOfEntries)
+    return tableOutput
+
+def get_bracket_pair_index(current_bracket_index, text):
+    brackets = []
+    text = text[current_bracket_index:]
+    for i in range(0, len(text)):
+        if text[i] == '(':
+            brackets.append('(')
+        elif text[i] == ')':
+            brackets = brackets[:-1]
+        if len(brackets) == 0:
+            return i + current_bracket_index
+
 def list_to_str(lis):
     '''(list of str) -> str
     This function returns the string representation of the list, with elements
@@ -214,11 +172,62 @@ def list_to_str(lis):
     return text[:-2]
 
 
-def clean_list(lis):
-    '''(list of str) -> str
-    This function formats the list so that each str is formatted of its leading
-    and trailing spaces
+def split_on(string, specialChars):
     '''
-    for i in range(0, len(lis)):
-        if type(lis[i]) == str:
-            lis[i] = lis[i].strip()
+    splits string at each char while keeping priority in mind with brackets
+    '''
+    elements = []
+    brackets = []
+    word = ''
+    for char in string:
+
+        if char == '(':
+            brackets.append('(')
+        elif char == ')':
+            brackets = brackets[:-1]
+
+        if (char not in specialChars) or (len(brackets) != 0):
+            word += char
+
+        if (char in specialChars) and len(brackets) == 0:
+            elements.append(word)
+            elements.append(char)
+            word = ''
+    # last element that gets left out
+    elements.append(word)
+
+    return elements
+
+def split_on2(string, strings):
+    elements = []
+    brackets = []
+    word = ''
+    for char in string:
+        if char == '(':
+            if len(brackets) == 0:
+                if word != '':
+                    elements.append(word)
+                word = '('
+            brackets.append('(')
+        elif char == ')':
+            brackets = brackets[:-1]
+            if len(brackets) == 0:
+                elements.append(word + ')')
+                word = ''
+        else:
+            word += char
+
+
+        for special in strings:
+            if (special in word) and (len(brackets) == 0):
+                index = word.index(special)
+                if index != 0:
+                    elements.append(word[:index])
+                elements.append(special)
+                word = ''
+
+    # last element that gets left out
+    if word != '':
+        elements.append(word)
+
+    return elements
